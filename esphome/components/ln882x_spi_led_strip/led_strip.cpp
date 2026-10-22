@@ -26,7 +26,7 @@ extern "C" {
 
 namespace esphome::ln882x_spi_led_strip {
 
-ESPHOME_LOG_TAG(TAG, "ln882x_spi_led_strip");
+static const char *const TAG = "ln882x_spi_led_strip";
 
 // light.py derives the SPI encoding from this APB0 clock, which the SDK's SystemInit() sets.
 static constexpr uint32_t APB0_HZ = 40000000;

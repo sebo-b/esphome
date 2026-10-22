@@ -153,4 +153,5 @@ async def to_code(config: ConfigType) -> None:
     await light.register_light(var, config)
     await cg.register_component(var, config)
 
-    cg.add_optional(var.set_max_refresh_rate, config.get(CONF_MAX_REFRESH_RATE))
+    if (rate := config.get(CONF_MAX_REFRESH_RATE)) is not None:
+        cg.add(var.set_max_refresh_rate(rate))
