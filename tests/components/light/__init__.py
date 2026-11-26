@@ -12,6 +12,8 @@ def override_manifest(manifest: ComponentManifestOverride) -> None:
         cg.add_define("USE_LIGHT_GAMMA_LUT")
         # The current estimate and limit of addressable lights
         cg.add_define("USE_LIGHT_POWER_ESTIMATION")
+        # constant_brightness: color_temperature_priority
+        cg.add_define("USE_LIGHT_COLOR_TEMPERATURE_PRIORITY")
 
     manifest.to_code = to_code_testing
     manifest.dependencies = manifest.dependencies + ["json"]
