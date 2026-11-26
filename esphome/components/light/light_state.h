@@ -107,6 +107,42 @@ class LightState : public EntityBase, public Component {
   /// a transition or flash runs.
   bool set_external_state(const LightColorValues &values);
 
+#ifdef USE_LIGHT_MOVE
+  /// The values the light shows now: current_values, or for an addressable light's own transition, which writes the
+  /// LEDs itself and leaves current_values at its start, where that transition has got to.
+  LightColorValues get_shown_values();
+  /// Perform `call` as a move from `start`: current_values is set to `start`, so callers pass where the light should
+  /// begin, usually get_shown_values(). `call` must make a transition, not a flash. Its transition runs at constant
+  /// speed, current_values follows it on every output, and a move of brightness that ends at 0% turns the light off,
+  /// as Matter's MoveWithOnOff does. `brightness` says which attribute the move changes: brightness or color
+  /// temperature; stop_move() freezes only that one. light.move builds the call.
+  void perform_move(LightCall &call, const LightColorValues &start, bool brightness);
+  /// The color temperature `values` show. A light on cold/warm white channels without native color temperature can have
+  /// its channels set directly, and then they carry the color temperature, not values.get_color_temperature(): it is
+  /// derived from their (gamma-corrected) mix, the inverse of the color temperature to channels formula. Falls back to
+  /// the stored color temperature when both channels are dark.
+  float get_shown_color_temperature(const LightColorValues &values, float min_mireds, float max_mireds) const;
+  /// Freeze a running move where the light is now, like the Matter Level Control Stop command. That is the last
+  /// value applied, also when the move's time is up and the next loop() has not applied its end yet. Only the
+  /// attribute the move changes is frozen. Other transitions, flashes and effects run on, and nothing happens when no
+  /// move is running.
+  void stop_move();
+  /// Whether a move of brightness (true) or of color temperature (false) is running.
+  bool is_moving(bool brightness) const { return this->moving_ && this->move_is_brightness_ == brightness; }
+#endif
+
+  /// The cold and warm white levels for a color temperature: the stronger one at full level, gamma-uncorrected like
+  /// every other channel value.
+  void color_temperature_to_cwww(float color_temperature, float min_mireds, float max_mireds, float *cold_white,
+                                 float *warm_white) const {
+    const float ww_fraction =
+        (clamp(color_temperature, min_mireds, max_mireds) - min_mireds) / (max_mireds - min_mireds);
+    const float cw_fraction = 1.0f - ww_fraction;
+    const float max_cw_ww = std::max(ww_fraction, cw_fraction);
+    *cold_white = this->gamma_uncorrect_lut(cw_fraction / max_cw_ww);
+    *warm_white = this->gamma_uncorrect_lut(ww_fraction / max_cw_ww);
+  }
+
   // ========== INTERNAL METHODS ==========
   // (In most use cases you won't need these)
   /// Load state from preferences
@@ -372,6 +408,12 @@ class LightState : public EntityBase, public Component {
   /// Internal method to save the current remote_values to the preferences
   void save_remote_values_();
 
+#ifdef USE_LIGHT_MOVE
+  /// During a move of color temperature on cold/warm white channels, set the channels from the color temperature, at
+  /// the scale the move started with.
+  void follow_color_temperature_();
+#endif
+
   /// Disable loop if neither transformer nor effect is active
   void disable_loop_if_idle_();
 
@@ -447,6 +489,14 @@ class LightState : public EntityBase, public Component {
   // for effects, true if a transformer (transition) is active.
   bool is_transformer_active_ : 1 {false};
   bool called_ : 1 {false};  // see called_since_clear()
+#ifdef USE_LIGHT_MOVE
+  /// Set only while perform_move() runs its call, so start_transition_() makes a linear transition.
+  bool move_requested_ : 1 {false};
+  /// Whether the running transformer is a move; cleared whenever it is replaced or ends.
+  bool moving_ : 1 {false};
+  /// What the running move changes: brightness, or else color temperature. Meaningful while moving_.
+  bool move_is_brightness_ : 1 {false};
+#endif
   /// Whether this light persists its state to preferences at all.
   bool save_enabled_ : 1 {false};
 #ifdef USE_LIGHT_TRANSITION_PUBLISH_INTERVAL
