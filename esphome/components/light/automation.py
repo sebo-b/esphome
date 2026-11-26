@@ -36,6 +36,7 @@ from esphome.const import (
 )
 from esphome.core import CORE, ID, EsphomeError, Lambda
 from esphome.cpp_generator import MockObj, TemplateArgsType
+from esphome.types import SafeExpType
 import esphome.final_validate as fv
 from esphome.schema_extractors import SCHEMA_EXTRACT, schema_extractor
 from esphome.types import ConfigType
@@ -49,6 +50,7 @@ from .types import (
     DimRelativeAction,
     LightEffectCycleAction,
     LightState,
+    light_ns,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -433,6 +435,17 @@ async def light_dim_relative_to_code(config, action_id, template_arg, args):
         )
         cg.add(var.set_limit_mode(conf[CONF_LIMIT_MODE]))
     return var
+
+
+async def _called_with_args(
+    value: Any, args: TemplateArgsType, type_: SafeExpType
+) -> SafeExpType:
+    """A constant, or the user's lambda called with the trigger's by-value args (never reduced)."""
+    if not isinstance(value, Lambda):
+        return value
+    return automation.immediate_lambda_call(
+        await cg.process_lambda(value, args, return_type=type_)
+    )
 
 
 _MOVE_DIRECTIONS = {"UP": True, "DOWN": False}
