@@ -17,6 +17,23 @@ bool dim_relative(LightState *state, LightCall &call, float relative_brightness,
 /// Turn on the next or previous configured effect; with `include_none`, "None" is part of the cycle.
 void cycle_effect(LightState *state, bool forward, bool include_none);
 
+#ifdef USE_LIGHT_MOVE
+/// light.move on brightness: toward max_brightness (up) or min_brightness (down) at a constant speed that crosses
+/// 0-100% in full_range_ms; 0 or less changes at once. Up turns an off light on at min_brightness, and continues from
+/// where a light that is fading out is. Down leaves an off light off. With a min_brightness of 0, the light stays on
+/// until it gets there and then turns off, as Matter's MoveWithOnOff does. Like a transition, the call publishes its
+/// target, the limit, as the state at once; light.stop publishes where the light got to. A move to 0% is not saved
+/// when it starts, only when it ends or stops.
+/// A move whose limit the light is at already stops a running move of brightness instead, so the light does not go on
+/// the other way; a running move of color temperature is not affected.
+void move_brightness(LightState *state, bool up, int32_t full_range_ms, float min_brightness, float max_brightness);
+/// light.move on color temperature: UP IS WARMER (more mireds), toward the light's max_mireds, and down is colder,
+/// toward its min_mireds, at a constant speed that crosses the whole range in full_range_ms; 0 or less changes at
+/// once. Only for a light that is on, in a mode with color temperature. It holds the brightness where it is shown, and
+/// stops a running move of color temperature, not of brightness, when the light is at the limit already.
+void move_color_temperature(LightState *state, bool up, int32_t full_range_ms);
+#endif
+
 class LightTurnOnTrigger final : public Trigger<>, public LightRemoteValuesListener {
  public:
   explicit LightTurnOnTrigger(LightState *a_light) : light_(a_light) {
