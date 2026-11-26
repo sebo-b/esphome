@@ -16,6 +16,8 @@ def override_manifest(manifest: ComponentManifestOverride) -> None:
         cg.add_define("USE_LIGHT_COLOR_TEMPERATURE_PRIORITY")
         # Relative brightness of white channels of unequal light output
         cg.add_define("USE_LIGHT_WHITE_RELATIVE_BRIGHTNESS")
+        # Linear moves, LightState::perform_move() and stop_move()
+        cg.add_define("USE_LIGHT_MOVE")
 
     manifest.to_code = to_code_testing
     manifest.dependencies = manifest.dependencies + ["json"]
